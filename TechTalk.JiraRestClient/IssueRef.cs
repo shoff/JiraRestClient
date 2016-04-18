@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
+    using System;
+
     public class IssueRef
     {
         public string id { get; set; }
@@ -9,7 +9,7 @@ namespace TechTalk.JiraRestClient
 
         internal string JiraIdentifier
         {
-            get { return String.IsNullOrWhiteSpace(id) ? key : id; }
+            get { return String.IsNullOrWhiteSpace(this.id) ? this.key : this.id; }
         }
     }
 }

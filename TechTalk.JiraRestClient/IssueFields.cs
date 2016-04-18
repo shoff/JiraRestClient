@@ -1,20 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
+    using System;
+    using System.Collections.Generic;
+
     public class IssueFields
     {
         public IssueFields()
         {
-            status = new Status();
-            timetracking = new Timetracking();
+            this.status = new Status();
+            this.timetracking = new Timetracking();
 
-            labels = new List<String>();
-            comments = new List<Comment>();
-            issuelinks = new List<IssueLink>();
-            attachment = new List<Attachment>();
-            watchers = new List<JiraUser>();
+            this.labels = new List<String>();
+            this.comments = new List<Comment>();
+            this.issuelinks = new List<IssueLink>();
+            this.attachment = new List<Attachment>();
+            this.watchers = new List<JiraUser>();
         }
 
         public String summary { get; set; }
@@ -24,7 +24,7 @@ namespace TechTalk.JiraRestClient
 
         public JiraUser reporter { get; set; }
         public JiraUser assignee { get; set; }
-        public List<JiraUser> watchers { get; set; } 
+        public List<JiraUser> watchers { get; set; }
 
         public List<String> labels { get; set; }
         public List<Comment> comments { get; set; }

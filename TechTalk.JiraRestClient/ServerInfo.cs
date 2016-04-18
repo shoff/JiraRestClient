@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
+    using System;
+
     public class ServerInfo
     {
         public string baseUrl { get; set; }

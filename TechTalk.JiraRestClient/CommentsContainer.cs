@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
+    using System.Collections.Generic;
+
     internal class CommentsContainer
     {
         public int startAt { get; set; }

@@ -1,14 +1,12 @@
-﻿using System;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
     public class IssueLink
     {
         public IssueLink()
         {
-            type = new LinkType();
-            inwardIssue = new IssueRef();
-            outwardIssue = new IssueRef();
+            this.type = new LinkType();
+            this.inwardIssue = new IssueRef();
+            this.outwardIssue = new IssueRef();
         }
 
         public string id { get; set; }

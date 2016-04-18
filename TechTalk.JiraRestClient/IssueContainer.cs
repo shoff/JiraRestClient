@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
-    internal class IssueContainer<TIssueFields> where TIssueFields : IssueFields, new()
+    using System.Collections.Generic;
+
+    internal class IssueContainer<TIssueFields>
+        where TIssueFields : IssueFields, new()
     {
         public string expand { get; set; }
 

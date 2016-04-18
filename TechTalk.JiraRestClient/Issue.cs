@@ -1,11 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
-    public class Issue<TIssueFields> : IssueRef where TIssueFields : IssueFields, new()
+    public class Issue<TIssueFields> : IssueRef
+        where TIssueFields : IssueFields, new()
     {
-        public Issue() { fields = new TIssueFields(); }
+        public Issue()
+        {
+            this.fields = new TIssueFields();
+        }
 
         public string expand { get; set; }
 

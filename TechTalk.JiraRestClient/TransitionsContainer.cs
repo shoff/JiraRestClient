@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
+    using System.Collections.Generic;
+
     internal class TransitionsContainer
     {
         public string expand { get; set; }

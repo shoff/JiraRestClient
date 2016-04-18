@@ -1,51 +1,32 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
-using RestSharp;
-using RestSharp.Deserializers;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Linq;
+    using System.Net;
+    using System.Text;
+    using RestSharp;
+    using RestSharp.Deserializers;
+
     //JIRA REST API documentation: https://docs.atlassian.com/jira/REST/latest
 
-    public class JiraClient<TIssueFields> : IJiraClient<TIssueFields> where TIssueFields : IssueFields, new()
+    public class JiraClient<TIssueFields> : IJiraClient<TIssueFields>
+        where TIssueFields : IssueFields, new()
     {
-        private readonly string username;
-        private readonly string password;
-        private readonly JsonDeserializer deserializer;
         private readonly string baseApiUrl;
+        private readonly JsonDeserializer deserializer;
+        private readonly string password;
+        private readonly string username;
+
         public JiraClient(string baseUrl, string username, string password)
         {
             this.username = username;
             this.password = password;
 
-            baseApiUrl = new Uri(new Uri(baseUrl), "rest/api/2/").ToString();
-            deserializer = new JsonDeserializer();
-        }
-
-        private RestRequest CreateRequest(Method method, String path)
-        {
-            var request = new RestRequest { Method = method, Resource = path, RequestFormat = DataFormat.Json };
-            request.AddHeader("Authorization", "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(String.Format("{0}:{1}", username, password))));
-            return request;
-        }
-
-        private IRestResponse ExecuteRequest(RestRequest request)
-        {
-            var client = new RestClient(baseApiUrl);
-            return client.Execute(request);
-        }
-
-        private void AssertStatus(IRestResponse response, HttpStatusCode status)
-        {
-            if (response.ErrorException != null)
-                throw new JiraClientException("Transport level error: " + response.ErrorMessage, response.ErrorException);
-            if (response.StatusCode != status)
-                throw new JiraClientException("JIRA returned wrong status: " + response.StatusDescription, response.Content);
+            this.baseApiUrl = new Uri(new Uri(baseUrl), "rest/api/2/").ToString();
+            this.deserializer = new JsonDeserializer();
         }
 
 
@@ -69,26 +50,22 @@ namespace TechTalk.JiraRestClient
             return EnumerateIssuesByQuery(CreateCommonJql(projectKey, issueType), null, 0);
         }
 
-        private static string CreateCommonJql(String projectKey, String issueType)
-        {
-            var queryParts = new List<String>();
-            if (!String.IsNullOrEmpty(projectKey))
-                queryParts.Add(String.Format("project={0}", projectKey));
-            if (!String.IsNullOrEmpty(issueType))
-                queryParts.Add(String.Format("issueType={0}", issueType));
-            return String.Join(" AND ", queryParts);
-        }
-
-        [Obsolete("This method is no longer supported and might be removed in a later release. Use EnumerateIssuesByQuery(jqlQuery, fields, startIndex).ToArray() instead")]
+        [Obsolete(
+            "This method is no longer supported and might be removed in a later release. Use EnumerateIssuesByQuery(jqlQuery, fields, startIndex).ToArray() instead"
+            )]
         public IEnumerable<Issue<TIssueFields>> GetIssuesByQuery(String projectKey, String issueType, String jqlQuery)
         {
             var jql = CreateCommonJql(projectKey, issueType);
             if (!String.IsNullOrEmpty(jql) && !String.IsNullOrEmpty(jqlQuery))
-                jql += "+AND+";// if neither are empty, join them with an 'and'
+            {
+                jql += "+AND+"; // if neither are empty, join them with an 'and'
+            }
             return EnumerateIssuesByQuery(CreateCommonJql(projectKey, issueType), null, 0).ToArray();
         }
 
-        [Obsolete("This method is no longer supported and might be removed in a later release. Use EnumerateIssuesByQuery(jqlQuery, fields, startIndex) instead")]
+        [Obsolete(
+            "This method is no longer supported and might be removed in a later release. Use EnumerateIssuesByQuery(jqlQuery, fields, startIndex) instead"
+            )]
         public IEnumerable<Issue<TIssueFields>> EnumerateIssues(String projectKey, String issueType, String fields)
         {
             var fieldDef = fields == null ? null
@@ -107,31 +84,6 @@ namespace TechTalk.JiraRestClient
             {
                 Trace.TraceError("EnumerateIssuesByQuery(jqlQuery, fields, startIndex) error: {0}", ex);
                 throw new JiraClientException("Could not load issues", ex);
-            }
-        }
-
-        private IEnumerable<Issue<TIssueFields>> EnumerateIssuesByQueryInternal(String jqlQuery, String[] fields, Int32 startIndex)
-        {
-            var queryCount = 50;
-            var resultCount = startIndex;
-            while (true)
-            {
-                var path = String.Format("search?jql={0}&startAt={1}&maxResults={2}", jqlQuery, resultCount, queryCount);
-                if (fields != null) path += String.Format("&fields={0}", String.Join(",", fields));
-
-                var request = CreateRequest(Method.GET, path);
-
-                var response = ExecuteRequest(request);
-                AssertStatus(response, HttpStatusCode.OK);
-
-                var data = deserializer.Deserialize<IssueContainer<TIssueFields>>(response);
-                var issues = data.issues ?? Enumerable.Empty<Issue<TIssueFields>>();
-
-                foreach (var item in issues) yield return item;
-                resultCount += issues.Count();
-
-                if (resultCount < data.total) continue;
-                else /* all issues received */ break;
             }
         }
 
@@ -156,7 +108,7 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                var issue = deserializer.Deserialize<Issue<TIssueFields>>(response);
+                var issue = this.deserializer.Deserialize<Issue<TIssueFields>>(response);
                 issue.fields.comments = GetComments(issue).ToList();
                 issue.fields.watchers = GetWatchers(issue).ToList();
                 Issue.ExpandLinks(issue);
@@ -171,7 +123,7 @@ namespace TechTalk.JiraRestClient
 
         public Issue<TIssueFields> CreateIssue(String projectKey, String issueType, String summary)
         {
-            return CreateIssue(projectKey, issueType, new TIssueFields { summary = summary });
+            return CreateIssue(projectKey, issueType, new TIssueFields {summary = summary});
         }
 
         public Issue<TIssueFields> CreateIssue(String projectKey, String issueType, TIssueFields issueFields)
@@ -182,31 +134,42 @@ namespace TechTalk.JiraRestClient
                 request.AddHeader("ContentType", "application/json");
 
                 var issueData = new Dictionary<string, object>();
-                issueData.Add("project", new { key = projectKey });
-                issueData.Add("issuetype", new { name = issueType });
+                issueData.Add("project", new {key = projectKey});
+                issueData.Add("issuetype", new {name = issueType});
 
                 if (issueFields.summary != null)
+                {
                     issueData.Add("summary", issueFields.summary);
+                }
                 if (issueFields.description != null)
+                {
                     issueData.Add("description", issueFields.description);
+                }
                 if (issueFields.labels != null)
+                {
                     issueData.Add("labels", issueFields.labels);
+                }
                 if (issueFields.timetracking != null)
-                    issueData.Add("timetracking", new { originalEstimate = issueFields.timetracking.originalEstimate });
+                {
+                    issueData.Add("timetracking", new {issueFields.timetracking.originalEstimate});
+                }
 
-                var propertyList = typeof(TIssueFields).GetProperties().Where(p => p.Name.StartsWith("customfield_"));
+                var propertyList = typeof (TIssueFields).GetProperties().Where(p => p.Name.StartsWith("customfield_"));
                 foreach (var property in propertyList)
                 {
                     var value = property.GetValue(issueFields, null);
-                    if (value != null) issueData.Add(property.Name, value);
+                    if (value != null)
+                    {
+                        issueData.Add(property.Name, value);
+                    }
                 }
 
-                request.AddBody(new { fields = issueData });
+                request.AddBody(new {fields = issueData});
 
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.Created);
 
-                var issueRef = deserializer.Deserialize<IssueRef>(response);
+                var issueRef = this.deserializer.Deserialize<IssueRef>(response);
                 return LoadIssue(issueRef);
             }
             catch (Exception ex)
@@ -226,22 +189,33 @@ namespace TechTalk.JiraRestClient
 
                 var updateData = new Dictionary<string, object>();
                 if (issue.fields.summary != null)
-                    updateData.Add("summary", new[] { new { set = issue.fields.summary } });
+                {
+                    updateData.Add("summary", new[] {new {set = issue.fields.summary}});
+                }
                 if (issue.fields.description != null)
-                    updateData.Add("description", new[] { new { set = issue.fields.description } });
+                {
+                    updateData.Add("description", new[] {new {set = issue.fields.description}});
+                }
                 if (issue.fields.labels != null)
-                    updateData.Add("labels", new[] { new { set = issue.fields.labels } });
+                {
+                    updateData.Add("labels", new[] {new {set = issue.fields.labels}});
+                }
                 if (issue.fields.timetracking != null)
-                    updateData.Add("timetracking", new[] { new { set = new { originalEstimate = issue.fields.timetracking.originalEstimate } } });
+                {
+                    updateData.Add("timetracking", new[] {new {set = new {issue.fields.timetracking.originalEstimate}}});
+                }
 
-                var propertyList = typeof(TIssueFields).GetProperties().Where(p => p.Name.StartsWith("customfield_"));
+                var propertyList = typeof (TIssueFields).GetProperties().Where(p => p.Name.StartsWith("customfield_"));
                 foreach (var property in propertyList)
                 {
                     var value = property.GetValue(issue.fields, null);
-                    if (value != null) updateData.Add(property.Name, new[] { new { set = value } });
+                    if (value != null)
+                    {
+                        updateData.Add(property.Name, new[] {new {set = value}});
+                    }
                 }
 
-                request.AddBody(new { update = updateData });
+                request.AddBody(new {update = updateData});
 
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.NoContent);
@@ -283,7 +257,7 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                var data = deserializer.Deserialize<TransitionsContainer>(response);
+                var data = this.deserializer.Deserialize<TransitionsContainer>(response);
                 return data.transitions;
             }
             catch (Exception ex)
@@ -302,9 +276,11 @@ namespace TechTalk.JiraRestClient
                 request.AddHeader("ContentType", "application/json");
 
                 var update = new Dictionary<string, object>();
-                update.Add("transition", new { id = transition.id });
+                update.Add("transition", new {transition.id});
                 if (transition.fields != null)
+                {
                     update.Add("fields", transition.fields);
+                }
 
                 request.AddBody(update);
 
@@ -331,7 +307,7 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                return deserializer.Deserialize<WatchersContainer>(response).watchers;
+                return this.deserializer.Deserialize<WatchersContainer>(response).watchers;
             }
             catch (Exception ex)
             {
@@ -351,7 +327,7 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                var data = deserializer.Deserialize<CommentsContainer>(response);
+                var data = this.deserializer.Deserialize<CommentsContainer>(response);
                 return data.comments ?? Enumerable.Empty<Comment>();
             }
             catch (Exception ex)
@@ -368,12 +344,12 @@ namespace TechTalk.JiraRestClient
                 var path = String.Format("issue/{0}/comment", issue.id);
                 var request = CreateRequest(Method.POST, path);
                 request.AddHeader("ContentType", "application/json");
-                request.AddBody(new Comment { body = comment });
+                request.AddBody(new Comment {body = comment});
 
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.Created);
 
-                return deserializer.Deserialize<Comment>(response);
+                return this.deserializer.Deserialize<Comment>(response);
             }
             catch (Exception ex)
             {
@@ -418,7 +394,7 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                return deserializer.Deserialize<List<Attachment>>(response).Single();
+                return this.deserializer.Deserialize<List<Attachment>>(response).Single();
             }
             catch (Exception ex)
             {
@@ -462,7 +438,9 @@ namespace TechTalk.JiraRestClient
                     .ToArray();
 
                 if (links.Length > 1)
+                {
                     throw new JiraClientException("Ambiguous issue link");
+                }
                 return links.SingleOrDefault();
             }
             catch (Exception ex)
@@ -480,9 +458,9 @@ namespace TechTalk.JiraRestClient
                 request.AddHeader("ContentType", "application/json");
                 request.AddBody(new
                 {
-                    type = new { name = relationship },
-                    inwardIssue = new { id = parent.id },
-                    outwardIssue = new { id = child.id }
+                    type = new {name = relationship},
+                    inwardIssue = new {parent.id},
+                    outwardIssue = new {child.id}
                 });
 
                 var response = ExecuteRequest(request);
@@ -526,7 +504,7 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                return deserializer.Deserialize<List<RemoteLinkResult>>(response)
+                return this.deserializer.Deserialize<List<RemoteLinkResult>>(response)
                     .Select(RemoteLink.Convert).ToList();
             }
             catch (Exception ex)
@@ -552,9 +530,7 @@ namespace TechTalk.JiraRestClient
                     },
                     @object = new
                     {
-                        url = remoteLink.url,
-                        title = remoteLink.title,
-                        summary = remoteLink.summary
+                        remoteLink.url, remoteLink.title, remoteLink.summary
                     }
                 });
 
@@ -562,7 +538,7 @@ namespace TechTalk.JiraRestClient
                 AssertStatus(response, HttpStatusCode.Created);
 
                 //returns: { "id": <id>, "self": <url> }
-                var linkId = deserializer.Deserialize<RemoteLink>(response).id;
+                var linkId = this.deserializer.Deserialize<RemoteLink>(response).id;
                 return GetRemoteLinks(issue).Single(rl => rl.id == linkId);
             }
             catch (Exception ex)
@@ -581,10 +557,19 @@ namespace TechTalk.JiraRestClient
                 request.AddHeader("ContentType", "application/json");
 
                 var updateData = new Dictionary<string, object>();
-                if (remoteLink.url != null) updateData.Add("url", remoteLink.url);
-                if (remoteLink.title != null) updateData.Add("title", remoteLink.title);
-                if (remoteLink.summary != null) updateData.Add("summary", remoteLink.summary);
-                request.AddBody(new { @object = updateData });
+                if (remoteLink.url != null)
+                {
+                    updateData.Add("url", remoteLink.url);
+                }
+                if (remoteLink.title != null)
+                {
+                    updateData.Add("title", remoteLink.title);
+                }
+                if (remoteLink.summary != null)
+                {
+                    updateData.Add("summary", remoteLink.summary);
+                }
+                request.AddBody(new {@object = updateData});
 
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.NoContent);
@@ -626,9 +611,8 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                var data = deserializer.Deserialize<List<IssueType>>(response);
+                var data = this.deserializer.Deserialize<List<IssueType>>(response);
                 return data;
-
             }
             catch (Exception ex)
             {
@@ -647,12 +631,86 @@ namespace TechTalk.JiraRestClient
                 var response = ExecuteRequest(request);
                 AssertStatus(response, HttpStatusCode.OK);
 
-                return deserializer.Deserialize<ServerInfo>(response);
+                return this.deserializer.Deserialize<ServerInfo>(response);
             }
             catch (Exception ex)
             {
                 Trace.TraceError("GetServerInfo() error: {0}", ex);
                 throw new JiraClientException("Could not retrieve server information", ex);
+            }
+        }
+
+        private RestRequest CreateRequest(Method method, String path)
+        {
+            var request = new RestRequest {Method = method, Resource = path, RequestFormat = DataFormat.Json};
+            request.AddHeader("Authorization",
+                "Basic " + Convert.ToBase64String(Encoding.UTF8.GetBytes(String.Format("{0}:{1}", this.username, this.password))));
+            return request;
+        }
+
+        private IRestResponse ExecuteRequest(RestRequest request)
+        {
+            var client = new RestClient(this.baseApiUrl);
+            return client.Execute(request);
+        }
+
+        private void AssertStatus(IRestResponse response, HttpStatusCode status)
+        {
+            if (response.ErrorException != null)
+            {
+                throw new JiraClientException("Transport level error: " + response.ErrorMessage, response.ErrorException);
+            }
+            if (response.StatusCode != status)
+            {
+                throw new JiraClientException("JIRA returned wrong status: " + response.StatusDescription, response.Content);
+            }
+        }
+
+        private static string CreateCommonJql(String projectKey, String issueType)
+        {
+            var queryParts = new List<String>();
+            if (!String.IsNullOrEmpty(projectKey))
+            {
+                queryParts.Add(String.Format("project={0}", projectKey));
+            }
+            if (!String.IsNullOrEmpty(issueType))
+            {
+                queryParts.Add(String.Format("issueType={0}", issueType));
+            }
+            return String.Join(" AND ", queryParts);
+        }
+
+        private IEnumerable<Issue<TIssueFields>> EnumerateIssuesByQueryInternal(String jqlQuery, String[] fields, Int32 startIndex)
+        {
+            var queryCount = 50;
+            var resultCount = startIndex;
+            while (true)
+            {
+                var path = String.Format("search?jql={0}&startAt={1}&maxResults={2}", jqlQuery, resultCount, queryCount);
+                if (fields != null)
+                {
+                    path += String.Format("&fields={0}", String.Join(",", fields));
+                }
+
+                var request = CreateRequest(Method.GET, path);
+
+                var response = ExecuteRequest(request);
+                AssertStatus(response, HttpStatusCode.OK);
+
+                var data = this.deserializer.Deserialize<IssueContainer<TIssueFields>>(response);
+                var issues = data.issues ?? Enumerable.Empty<Issue<TIssueFields>>();
+
+                foreach (var item in issues)
+                {
+                    yield return item;
+                }
+                resultCount += issues.Count();
+
+                if (resultCount < data.total)
+                {
+                    continue;
+                }
+                break;
             }
         }
     }

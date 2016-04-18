@@ -1,24 +1,20 @@
-﻿using System;
-using System.Globalization;
-
-namespace TechTalk.JiraRestClient
+﻿namespace TechTalk.JiraRestClient
 {
+    using System.Globalization;
+
     public class Timetracking
     {
+        private const decimal DayToSecFactor = 8*3600;
         public string originalEstimate { get; set; }
         public int originalEstimateSeconds { get; set; }
 
-        private const decimal DayToSecFactor = 8 * 3600;
         public decimal originalEstimateDays
         {
-            get
-            {
-                return (decimal)originalEstimateSeconds / DayToSecFactor;
-            }
+            get { return this.originalEstimateSeconds/DayToSecFactor; }
             set
             {
-                originalEstimate = string.Format(CultureInfo.InvariantCulture, "{0}d", value);
-                originalEstimateSeconds = (int)(value * DayToSecFactor);
+                this.originalEstimate = string.Format(CultureInfo.InvariantCulture, "{0}d", value);
+                this.originalEstimateSeconds = (int) (value*DayToSecFactor);
             }
         }
     }
